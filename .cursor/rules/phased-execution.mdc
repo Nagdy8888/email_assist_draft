@@ -1,0 +1,27 @@
+---
+description: Enforce phase-by-phase execution - only work on one phase at a time and wait for user approval before moving to the next phase.
+alwaysApply: true
+---
+
+# Phased Execution Rule
+
+This project follows a phased implementation plan at `.cursor/plans/email_agent_phased_implementation_d99ca526.plan.md`.
+
+## Rules
+
+- **Only work on the current phase.** Do NOT start a later phase unless the user explicitly says to move on (e.g. "start phase 2", "move to phase 3", "next phase").
+- After finishing the current phase, **stop and report** what was done. List every file created or changed, and confirm the phase checklist items.
+- **Wait for the user** to review the results. They may request modifications before approving the phase.
+- If the user asks for changes to the current phase, apply them and report again. Do NOT proceed to the next phase.
+- When the user approves (e.g. "looks good, start phase 2"), only then begin the next phase.
+- Reference the plan file for the current phase's deliverable and checklist to know when the phase is complete.
+
+## Phase order
+
+1. Phase 1: All dependencies and full project structure
+2. Phase 2: Simple agent (user message → response)
+3. Phase 3: Supabase tables and store messages
+4. Phase 4: Send email from user message + store to Supabase
+5. Phase 5: Email triage and email mode
+6. Phase 6: Memory and HITL
+7. Phase 7: Run script, notebook, and documentation

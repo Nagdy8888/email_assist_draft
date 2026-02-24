@@ -1,0 +1,23 @@
+---
+description: Keep project docs (Phase 7 set) in docs/ and update them after any change that affects them.
+alwaysApply: true
+---
+
+# Project docs: create and update continuously
+
+Maintain these markdown files under `docs/` and update them in the **same edit session** as the code or config change that affects them. Create a doc if it does not exist yet.
+
+**Doc set:** `docs/PROJECT_OVERVIEW.md` (or README), `docs/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `docs/DATABASE.md`, `docs/FILES_AND_MODULES.md`, `docs/PROMPTS.md`, `docs/RUNNING_AND_TESTING.md`, `docs/GLOSSARY.md` (optional).
+
+**When you change X, update Y:**
+
+- New or changed file under `src/email_assistant/` (nodes, tools, db, entry, schemas, prompts, memory, utils) → **FILES_AND_MODULES.md** (and **ARCHITECTURE.md** if flow/graph changes).
+- Env vars or `.env.example` → **CONFIGURATION.md**.
+- Schema, migrations, store, checkpointer → **DATABASE.md**.
+- Prompt content or location (`prompts.py`, `tools/gmail/prompt_templates.py`) → **PROMPTS.md**.
+- Run script, notebook, or test instructions → **RUNNING_AND_TESTING.md**.
+- High-level flow, graph shape, state, or node wiring → **ARCHITECTURE.md** (and **PROJECT_OVERVIEW.md** if the "what it does" summary changes).
+- Project purpose, features, or run steps → **PROJECT_OVERVIEW.md** (or README).
+- New important terms → **GLOSSARY.md** (if present).
+
+Reference the phased plan Phase 7 section for what each doc should contain. Do not defer doc updates to a later session.
