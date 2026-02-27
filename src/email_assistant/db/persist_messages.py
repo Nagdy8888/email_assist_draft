@@ -85,7 +85,12 @@ def persist_messages(
                 """,
                 (chat_id, u),
             )
-            # Insert messages (simple append; no dedup by message id for Phase 3)
+            # Replace messages for this chat (sync full conversation; avoids duplicates when graph runs each turn)
+            cur.execute(
+                "DELETE FROM email_assistant.messages WHERE chat_id = %s",
+                (chat_id,),
+            )
+            # Insert current messages
             for msg in messages:
                 role = _message_role(msg)
                 content = _message_content(msg)
