@@ -8,9 +8,10 @@
 
 Tech stack: LangGraph, LangChain, OpenAI, Supabase, Postgres (checkpointer + optional store), Gmail API, optional Google Calendar.
 
-## Current state (Phase 3)
+## Current state (Phase 4)
 
 - **Phase 1:** All dependencies and full project structure (stubs) in place.
 - **Phase 2:** Simple agent: user message → LLM response; in-memory or Postgres checkpointer.
-- **Phase 3:** Supabase/Postgres: app tables (users, chats, messages, agent_memory) via `migrations/001_email_assistant_tables.sql`. Postgres checkpointer and PostgresStore (setup via `scripts/setup_db.py`). When `DATABASE_URL` is set, the run script uses Postgres and **persists messages** to `email_assistant.messages` after each run. Agent behavior unchanged (question → response).
-- See **README.md** for setup and **docs/RUNNING_AND_TESTING.md** and **docs/DATABASE.md** for running and DB setup.
+- **Phase 3:** Supabase/Postgres: app tables, checkpointer, store; messages persisted when `DATABASE_URL` is set.
+- **Phase 4:** User can ask the agent to **send an email** to a specific address. Implemented: **send_email_tool** (new email only), **question_tool**, **done_tool**; Gmail OAuth via `.secrets/credentials.json` and `.secrets/token.json`; tool-call loop (chat → tools → chat → persist). Messages still stored in Supabase. Reply by `email_id` is Phase 5.
+- See **README.md** and **docs/RUNNING_AND_TESTING.md** for setup and Gmail OAuth.

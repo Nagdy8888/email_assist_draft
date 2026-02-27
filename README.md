@@ -24,7 +24,9 @@ LangGraph-based email assistant with triage, human-in-the-loop, memory, and Gmai
    ```
    Set `OPENAI_API_KEY` in `.env`. Optionally set `RUN_MESSAGE`, `THREAD_ID`, and (Phase 3) `USER_ID`.
 
-5. **Optional — LangGraph Studio:** Run the agent in the browser with a local dev server:
+5. **(Optional) Phase 4 — send email:** To let the agent send emails via Gmail, add `.secrets/credentials.json` (OAuth client secrets from Google Cloud Console) and run once; a browser will open for consent and save `.secrets/token.json`. Then you can ask e.g. "Send an email to someone@example.com with subject Hello saying thanks."
+
+6. **Optional — LangGraph Studio:** Run the agent in the browser with a local dev server:
    ```bash
    uv sync --extra dev
    uv run langgraph dev

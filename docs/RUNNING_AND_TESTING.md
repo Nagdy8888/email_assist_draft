@@ -37,6 +37,8 @@ How to run and test the agent.
 
 Run the agent in [LangGraph Studio](https://smith.langchain.com/studio) with a local dev server:
 
+**Phase 4 — send email:** The agent can send emails when the user asks. Set up Gmail OAuth: save OAuth client secrets as `.secrets/credentials.json`; on first Gmail use a browser opens for consent and token is saved to `.secrets/token.json`. Tools: send_email_tool (new email), question_tool, done_tool.
+
 1. **Install project and Studio CLI** from the project root:
    ```bash
    uv sync --extra dev

@@ -2,11 +2,16 @@
 
 Flow, graph, state, and data flow.
 
-## Phase 2: Simple agent (current)
+# Architecture
 
-- **Graph:** Single path: `START → chat → END`. One node calls ChatOpenAI with `state["messages"]` and appends the assistant reply.
-- **State:** `MessagesState` — a single key `messages` with the `add_messages` reducer (append-only conversation).
-- **Checkpointer:** `MemorySaver` (in-memory) so that `config={"configurable": {"thread_id": "..."}}` gives multi-turn: each invoke with the same `thread_id` sees prior messages.
-- **Entry:** `simple_agent.build_simple_graph()` builds and compiles the graph; `run_agent.py` invokes it with a user message and prints the last message.
+Flow, graph, state, and data flow.
 
-No DB, no store, no email. Full graph (input_router, triage, response_agent, etc.) is added in later phases.
+## Phase 4: Simple agent with tools (current)
+
+- **Graph:** `START → chat → (tools → chat)* → persist_messages → END`. The **chat** node calls ChatOpenAI with `bind_tools(send_email_tool, question_tool, done_tool)`. If the assistant message has `tool_calls`, the **tools** node runs them (via LangGraph `ToolNode`) and appends `ToolMessage`s; then control returns to **chat**. When there are no tool_calls, control goes to **persist_messages** then END.
+- **State:** `MessagesState` — `messages` with `add_messages` reducer.
+- **Checkpointer:** Postgres when `DATABASE_URL` is set; else in-memory. Same thread_id gives multi-turn.
+- **Tools:** `send_email_tool` (new email only; reply by email_id in Phase 5), `question_tool`, `done_tool`. Gmail OAuth via `.secrets/credentials.json` and `.secrets/token.json`.
+- **Persistence:** When `DATABASE_URL` is set, **persist_messages** node writes to `email_assistant.messages` (CLI and LangGraph Studio).
+
+Full graph (input_router, triage, response_agent subgraph, mark_as_read) is Phase 5.

@@ -14,6 +14,7 @@ All required and optional variables are documented in `.env.example`:
 | `LANGCHAIN_API_KEY` | LangSmith API key |
 | `LANGCHAIN_PROJECT` | LangSmith project name (e.g. `email-assistant`) |
 | `GOOGLE_TOKEN_PATH` | Path to Gmail OAuth token (e.g. `.secrets/token.json`) |
+| `GOOGLE_CREDENTIALS_PATH` | OAuth client secrets JSON from Google Cloud Console (e.g. `.secrets/credentials.json`). Required for first-time Gmail auth; browser flow saves token to `GOOGLE_TOKEN_PATH`. |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_KEY` | Supabase anon/service key |
 | `DATABASE_URL` | Postgres connection string (checkpointer, store, and app tables). When set, run script uses Postgres and persists messages. |
