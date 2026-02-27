@@ -12,7 +12,7 @@ File-by-file guide to the codebase.
 - **Utils**: `utils.py` — parse_gmail, format_gmail_markdown, format_for_display.
 - **Nodes**: `nodes/` — input_router, triage, triage_interrupt, response_agent, mark_as_read.
 - **Tools**: `tools/` — get_tools; `tools/gmail/` — send_email, fetch_emails, mark_as_read, calendar; `tools/common.py` — Question, Done.
-- **DB**: `db/store.py` — memory store; `db/checkpointer.py` — PostgresSaver.
+- **DB**: `db/store.py` — PostgresStore; `db/checkpointer.py` — PostgresSaver; `db/persist_messages.py` — persist chats/messages.
 
 ## Tree
 
@@ -34,9 +34,12 @@ File-by-file guide to the codebase.
 | `src/email_assistant/tools/__init__.py`                    | get_tools(include_gmail=...)                                       |
 | `src/email_assistant/tools/common.py`                      | Question, Done                                                     |
 | `src/email_assistant/tools/gmail/*.py`                     | send_email, fetch_emails, mark_as_read, calendar, prompt_templates |
-| `src/email_assistant/db/store.py`                          | Store for memory                                                   |
-| `src/email_assistant/db/checkpointer.py`                   | PostgresSaver wrapper                                              |
-| `scripts/run_agent.py`                                     | Load .env, run simple agent, print last message                     |
+| `src/email_assistant/db/store.py`                          | PostgresStore; setup_store()                                       |
+| `src/email_assistant/db/checkpointer.py`                   | postgres_checkpointer(); PostgresSaver + setup()                    |
+| `src/email_assistant/db/persist_messages.py`              | persist_messages(); write chats/messages after run                 |
+| `scripts/run_agent.py`                                     | Run agent; Postgres + persist when DATABASE_URL set                |
+| `scripts/setup_db.py`                                     | One-time: checkpointer.setup() and store.setup()                   |
+| `migrations/001_email_assistant_tables.sql`                | App schema: users, chats, messages, agent_memory                   |
 | `langgraph.json`                                          | LangGraph Studio: graphs and env; `langgraph dev` uses this        |
 | `migrations/`                                              | DB schema (SQL in Phase 3)                                         |
 | `notebooks/`                                               | Notebook (Phase 7)                                                 |

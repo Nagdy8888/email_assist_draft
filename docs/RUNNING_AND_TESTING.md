@@ -23,8 +23,15 @@ How to run and test the agent.
 3. **Multi-turn**
    - Use the same `thread_id` in `config` when invoking the graph (e.g. same `THREAD_ID`). The checkpointer keeps conversation history for that thread; a second run with the same thread_id would see the previous messages. The current script runs one turn and exits; multi-turn is supported by calling `graph.invoke(...)` repeatedly with the same `config`.
 
-4. **No DB / store / email**
-   - Phase 2 uses only LangGraph, OpenAI, and optional LangSmith. No Supabase or Postgres.
+4. **Phase 3 — with Postgres**
+   - Set `DATABASE_URL` in `.env` (Postgres connection string; can be Supabase’s connection string).
+   - Run the app migration and LangGraph tables once:
+     ```bash
+     # 1) Run migrations/001_email_assistant_tables.sql in your Postgres (e.g. Supabase SQL editor).
+     # 2) Create checkpoint and store tables:
+     uv run python scripts/setup_db.py
+     ```
+   - Then run the agent as above. It will use the Postgres checkpointer and persist each run’s messages to `email_assistant.messages` (and ensure `email_assistant.users` / `email_assistant.chats` exist). Optional: set `USER_ID` in `.env` (UUID or label; default `default-user`).
 
 ## LangGraph Studio (local)
 

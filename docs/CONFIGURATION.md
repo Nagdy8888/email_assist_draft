@@ -16,9 +16,10 @@ All required and optional variables are documented in `.env.example`:
 | `GOOGLE_TOKEN_PATH` | Path to Gmail OAuth token (e.g. `.secrets/token.json`) |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_KEY` | Supabase anon/service key |
-| `DATABASE_URL` | Postgres connection string (checkpointer and optional store) |
+| `DATABASE_URL` | Postgres connection string (checkpointer, store, and app tables). When set, run script uses Postgres and persists messages. |
+| `USER_ID` | User identifier for persisted chats (default: `default-user`). Optional. |
 
-**Optional for Phase 2 run script:** `RUN_MESSAGE` (default: "Hello, how are you?"), `THREAD_ID` (default: "default-thread") — see `docs/RUNNING_AND_TESTING.md`.
+**Optional for run script:** `RUN_MESSAGE` (default: "Hello, how are you?"), `THREAD_ID` (default: "default-thread") — see `docs/RUNNING_AND_TESTING.md`.
 
 **LangGraph Studio:** `langgraph dev` reads `langgraph.json` and loads `.env`. No extra env vars are required beyond `OPENAI_API_KEY` (and optional LangSmith vars).
 

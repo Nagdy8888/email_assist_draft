@@ -8,8 +8,9 @@
 
 Tech stack: LangGraph, LangChain, OpenAI, Supabase, Postgres (checkpointer + optional store), Gmail API, optional Google Calendar.
 
-## Current state (Phase 2)
+## Current state (Phase 3)
 
 - **Phase 1:** All dependencies and full project structure (stubs) in place.
-- **Phase 2:** Simple agent runs: user message → LLM response. One node, `MessagesState`, in-memory checkpointer (`MemorySaver`). Run with `python scripts/run_agent.py` (set `OPENAI_API_KEY` in `.env`). Multi-turn works with the same `thread_id`. No DB, no store, no email.
-- See **README.md** for setup and **docs/RUNNING_AND_TESTING.md** for how to run and test.
+- **Phase 2:** Simple agent: user message → LLM response; in-memory or Postgres checkpointer.
+- **Phase 3:** Supabase/Postgres: app tables (users, chats, messages, agent_memory) via `migrations/001_email_assistant_tables.sql`. Postgres checkpointer and PostgresStore (setup via `scripts/setup_db.py`). When `DATABASE_URL` is set, the run script uses Postgres and **persists messages** to `email_assistant.messages` after each run. Agent behavior unchanged (question → response).
+- See **README.md** for setup and **docs/RUNNING_AND_TESTING.md** and **docs/DATABASE.md** for running and DB setup.
