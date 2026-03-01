@@ -20,7 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "langgraph-cli[inmem]",
-    "langgraph-api>=0.7.54",
+    "langgraph-api>=0.7.59",
 ]
 
 [build-system]

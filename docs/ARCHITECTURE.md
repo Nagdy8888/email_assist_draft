@@ -2,16 +2,28 @@
 
 Flow, graph, state, and data flow.
 
-# Architecture
+## One agent with two subagents
 
-Flow, graph, state, and data flow.
+The agent is a **single compiled graph** with two **subagents** (compiled subgraphs added as nodes):
 
-## Phase 4: Simple agent with tools (current)
+1. **Email Assistant subagent** — triage (ignore / notify / respond) and HITL (`interrupt()` for notify). When it exits, the parent reads `classification_decision` and `_notify_choice` and routes to prepare_messages (respond) or END (ignore).
+2. **Response subagent** — chat → tools → persist_messages (same tool loop as before). Handles both question mode and the respond path after triage. Reply context is injected by the **prepare_messages** node before this subgraph runs.
 
-- **Graph:** `START → chat → (tools → chat)* → persist_messages → END`. The **chat** node calls ChatOpenAI with `bind_tools(send_email_tool, question_tool, done_tool)`. If the assistant message has `tool_calls`, the **tools** node runs them (via LangGraph `ToolNode`) and appends `ToolMessage`s; then control returns to **chat**. When there are no tool_calls, control goes to **persist_messages** then END.
-- **State:** `MessagesState` — `messages` with `add_messages` reducer.
-- **Checkpointer:** Postgres when `DATABASE_URL` is set; else in-memory. Same thread_id gives multi-turn.
-- **Tools:** `send_email_tool` (new email only; reply by email_id in Phase 5), `question_tool`, `done_tool`. Gmail OAuth via `.secrets/credentials.json` and `.secrets/token.json`.
-- **Persistence:** When `DATABASE_URL` is set, **persist_messages** node writes to `email_assistant.messages` (CLI and LangGraph Studio).
+**Top-level flow:**
 
-Full graph (input_router, triage, response_agent subgraph, mark_as_read) is Phase 5.
+- `START → input_router` → if `email_input`: **email_assistant** (subgraph); else: **prepare_messages**.
+- After **email_assistant**: if respond (direct or after notify resume) → **prepare_messages**; else END.
+- **prepare_messages** → **response_agent** (subgraph) → **mark_as_read** → END.
+
+**State:** `State` — `messages`, `email_input`, `classification_decision`, `email_id`, `_notify_choice`, `user_message`, `question`. Input schema: `StateInput`.
+
+**Triage:** One LLM call with `RouterSchema`. On **notify**, `triage_interrupt_handler` calls `interrupt(...)`; subgraph exits to END; parent resumes with `Command(resume="respond")` or `Command(resume="ignore")`.
+
+**prepare_messages:** If `email_id` and `email_input` are set, prepends a HumanMessage with reply context so the Response subgraph can call `send_email_tool(..., email_id=...)`. When `email_input._source == "gmail"`, the context states that the email just arrived in the user's Gmail inbox so the agent knows it is an incoming message.
+
+**mark_as_read:** After the Response subgraph, when `email_id` is set, marks the Gmail message as read.
+
+## Response subgraph (Subagent 2)
+
+- **Graph:** `START → chat → (tools → chat)* → persist_messages → END`. Same as before: send_email_tool (new + reply), question_tool, done_tool.
+- **State:** Uses full `State`; nodes only read/write `messages`. Built by `simple_agent.build_response_subgraph()` (alias `build_simple_graph`).

@@ -14,8 +14,12 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# Gmail send scope; add gmail.readonly / gmail.modify later for fetch/mark_as_read
-SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+# Gmail send scope; gmail.readonly + gmail.modify for reply (get message/thread) and mark_as_read.
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.modify",
+]
 
 
 def _project_root() -> Path:

@@ -1,25 +1,24 @@
 """
-Simple agent: user message → LLM with tools (send_email, question, done). Phase 4.
+Response subgraph: chat → tools → persist_messages. Used as subagent in the main agent.
 
 Use cases: user can ask to send an email; agent uses send_email_tool and tool-call loop.
-Persists messages to Supabase/Postgres when DATABASE_URL is set (CLI and LangSmith Studio).
+Persists messages to Supabase/Postgres when DATABASE_URL is set. Exposed as build_response_subgraph().
 """
 
 import os
 
-from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_config
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from email_assistant.prompts import get_agent_system_prompt_with_tools
-from email_assistant.schemas import MessagesState
+from email_assistant.schemas import State
 from email_assistant.tools import get_tools
 
 
-def _chat_node(state: MessagesState) -> dict:
+def _chat_node(state: State) -> dict:
     """
     Call LLM with tools; return the assistant message (may contain tool_calls).
 
@@ -37,7 +36,7 @@ def _chat_node(state: MessagesState) -> dict:
     return {"messages": [response]}
 
 
-def _should_continue(state: MessagesState) -> str:
+def _should_continue(state: State) -> str:
     """Route to tools if last message has tool_calls, else to persist."""
     messages = state.get("messages", [])
     if not messages:
@@ -48,7 +47,7 @@ def _should_continue(state: MessagesState) -> str:
     return "persist_messages"
 
 
-def _persist_messages_node(state: MessagesState) -> dict:
+def _persist_messages_node(state: State) -> dict:
     """
     When DATABASE_URL is set, persist state["messages"] to email_assistant.messages.
 
@@ -74,16 +73,15 @@ def _persist_messages_node(state: MessagesState) -> dict:
     return {}
 
 
-def build_simple_graph(checkpointer=None):
+def build_response_subgraph(checkpointer=None):
     """
-    Build and compile the graph: START → chat → (tools → chat)* → persist_messages → END.
+    Build and compile the Response subgraph: START → chat → (tools → chat)* → persist_messages → END.
 
-    Use cases: run script or LangGraph Studio; when DATABASE_URL is set, messages
-    are persisted. Phase 4: send_email_tool, question_tool, done_tool in the loop.
+    Use cases: added as a node to the main agent; when DATABASE_URL is set, messages are persisted.
     """
     tools = get_tools(include_gmail=True)
     tool_node = ToolNode(tools)
-    builder = StateGraph(MessagesState)
+    builder = StateGraph(State)
     builder.add_node("chat", _chat_node)
     builder.add_node("tools", tool_node)
     builder.add_node("persist_messages", _persist_messages_node)
@@ -96,5 +94,5 @@ def build_simple_graph(checkpointer=None):
     return builder.compile()
 
 
-# For LangGraph Studio: langgraph dev loads this via langgraph.json.
-graph = build_simple_graph()
+# Backward compatibility for code that imports build_simple_graph.
+build_simple_graph = build_response_subgraph

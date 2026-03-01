@@ -46,6 +46,7 @@ Thumbs.db
 # LangSmith / local
 .langchain/
 *.log
+.gmail_processed_ids.json
 
 # Testing and coverage
 .pytest_cache/
