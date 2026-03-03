@@ -15,6 +15,9 @@ def _normalize_email_input(email_input: dict | None) -> dict | None:
     Sets _source to 'gmail' when the payload has a Gmail message id or Gmail API structure so the agent knows it is an incoming message from the user's Gmail inbox."""
     if not email_input or not isinstance(email_input, dict):
         return None
+    # Unwrap double-nested email_input (e.g. Studio run input sometimes as {"email_input": {"email_input": {...}}}).
+    if set(email_input.keys()) <= {"email_input"} and isinstance(email_input.get("email_input"), dict):
+        email_input = email_input["email_input"]
     has_gmail_id = bool(email_input.get("id"))
     payload = email_input.get("payload") or {}
     headers = payload.get("headers") or []

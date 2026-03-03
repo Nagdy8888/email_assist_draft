@@ -3,5 +3,8 @@
   "graphs": {
     "email_assistant": "./src/email_assistant/email_assistant_hitl_memory_gmail.py:email_assistant"
   },
-  "env": ".env"
+  "env": ".env",
+  "checkpointer": {
+    "path": "./src/email_assistant/db/studio_checkpointer.py:generate_checkpointer"
+  }
 }

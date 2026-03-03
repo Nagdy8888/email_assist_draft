@@ -11,7 +11,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from email_assistant.db.checkpointer import postgres_checkpointer
+from email_assistant.db.checkpointer import postgres_checkpointer, run_checkpoint_created_at_migration
 from email_assistant.db.store import setup_store
 
 
@@ -21,9 +21,12 @@ def main() -> None:
         print("DATABASE_URL is not set. Set it in .env and run again.")
         sys.exit(1)
     print("Setting up LangGraph checkpointer tables...")
-    with postgres_checkpointer() as _:
-        pass  # setup() is called inside the context
+    with postgres_checkpointer() as cp:
+        cp.setup()
     print("Checkpointer tables created.")
+    print("Adding created_at to checkpoint tables...")
+    run_checkpoint_created_at_migration()
+    print("Created_at columns added.")
     print("Setting up LangGraph store table...")
     setup_store()
     print("Store table created.")

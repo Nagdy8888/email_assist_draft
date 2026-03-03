@@ -4,16 +4,15 @@ Run the email assistant graph.
 Use cases: load .env, build/compile the Phase 5 graph (input_router → triage or response_agent),
 invoke with user_message (question mode) or email_input (email mode), print the last message.
 When DATABASE_URL is set, the graph uses Postgres checkpointer; messages are persisted via
-the response_agent subgraph. For notify path, graph may pause at interrupt; resume with
-Command(resume="respond") or Command(resume="ignore").
+the response_agent subgraph. For notify path, the graph pauses at interrupt(); prompt the user
+to choose respond or ignore, then resume with Command(resume="respond") or Command(resume="ignore").
 """
 
 import os
 
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
-
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
 
 from email_assistant.email_assistant_hitl_memory_gmail import build_email_assistant_graph
 from email_assistant.db.checkpointer import postgres_checkpointer
@@ -26,6 +25,7 @@ def main() -> None:
     config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
 
     database_url = os.getenv("DATABASE_URL")
+    # When DATABASE_URL is set, use Supabase Postgres so checkpoint data is stored in Supabase (run setup_db.py once).
     if database_url:
         with postgres_checkpointer() as checkpointer:
             graph = build_email_assistant_graph(checkpointer=checkpointer)
@@ -36,7 +36,7 @@ def main() -> None:
 
 
 def _run(graph, config: dict) -> None:
-    """Invoke graph with RUN_MESSAGE (question) or RUN_EMAIL_* (email mode)."""
+    """Invoke graph with RUN_MESSAGE (question) or RUN_EMAIL_* (email mode). On notify interrupt, prompt and resume."""
     # Optional: email mode via env (for testing)
     email_from = os.getenv("RUN_EMAIL_FROM")
     email_subject = os.getenv("RUN_EMAIL_SUBJECT")
@@ -57,10 +57,16 @@ def _run(graph, config: dict) -> None:
 
     result = graph.invoke(input_state, config=config)
 
-    if result.get("__interrupt__"):
-        print("Graph paused (notify path). Resume with: graph.invoke(Command(resume='respond'), config=config)")
-        print("Interrupt:", result["__interrupt__"])
-        return
+    while result.get("__interrupt__"):
+        interrupt_payload = result["__interrupt__"]
+        print("Graph paused (notify path). The email was classified as notify (FYI).")
+        print("Interrupt:", interrupt_payload)
+        raw = input("Resume with (r)espond or (i)gnore? [r/i]: ").strip().lower()
+        if raw.startswith("r") or raw == "respond":
+            choice = "respond"
+        else:
+            choice = "ignore"
+        result = graph.invoke(Command(resume=choice), config=config)
 
     messages = result.get("messages", [])
     if messages:
@@ -70,6 +76,8 @@ def _run(graph, config: dict) -> None:
         print("(no messages in state)")
     if result.get("classification_decision"):
         print("Classification:", result["classification_decision"])
+    if result.get("_notify_choice"):
+        print("Notify choice:", result["_notify_choice"])
 
 
 if __name__ == "__main__":

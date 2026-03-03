@@ -11,21 +11,31 @@ from contextlib import contextmanager
 from typing import Iterator
 
 from langgraph.store.postgres import PostgresStore
+from psycopg import Connection
+from psycopg.rows import dict_row
 
 
 @contextmanager
 def postgres_store() -> Iterator[PostgresStore]:
     """
-    Yield a PostgresStore for DATABASE_URL.
+    Yield a PostgresStore for DATABASE_URL in the email_assistant schema.
 
     Use cases: compile graph with store=... when using memory; or call setup()
-    inside this context to create the store table.
+    inside this context to create the store table. Uses prepare_threshold=None
+    to avoid DuplicatePreparedStatement with Supabase/pooled connections.
     """
     url = os.getenv("DATABASE_URL")
     if not url:
         raise ValueError("DATABASE_URL is required for postgres store")
-    with PostgresStore.from_conn_string(url) as store:
-        yield store
+    conn = Connection.connect(
+        url, autocommit=True, prepare_threshold=None, row_factory=dict_row
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET search_path TO email_assistant")
+        yield PostgresStore(conn)
+    finally:
+        conn.close()
 
 
 def setup_store() -> None:
@@ -33,6 +43,19 @@ def setup_store() -> None:
     Create the LangGraph store table in Postgres (idempotent).
 
     Use cases: run once before using the store, e.g. from scripts/setup_db.py.
+    Uses a dedicated connection with prepare_threshold=None to avoid
+    DuplicatePreparedStatement when using Supabase or other pooled backends.
     """
-    with postgres_store() as store:
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        raise ValueError("DATABASE_URL is required for postgres store")
+    conn = Connection.connect(
+        url, autocommit=True, prepare_threshold=None, row_factory=dict_row
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET search_path TO email_assistant")
+        store = PostgresStore(conn)
         store.setup()
+    finally:
+        conn.close()

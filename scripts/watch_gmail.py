@@ -68,6 +68,7 @@ def main() -> None:
 
     processed = load_processed_ids()
     database_url = os.getenv("DATABASE_URL")
+    # When DATABASE_URL is set, use Supabase Postgres so checkpoint data is stored in Supabase (run setup_db.py once).
     if database_url:
         with postgres_checkpointer() as checkpointer:
             graph = build_email_assistant_graph(checkpointer=checkpointer)

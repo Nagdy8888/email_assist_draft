@@ -27,7 +27,7 @@ State = TypedDict(
         "email_input": Optional[dict],
         "classification_decision": Optional[ClassificationDecision],
         "email_id": Optional[str],
-        "_notify_choice": Optional[str],  # "respond" | "ignore" after triage_interrupt resume
+        "_notify_choice": Optional[str],  # "respond" | "ignore" after triage_interrupt (user resumes with Command(resume=...))
         "user_message": Optional[str],
         "question": Optional[str],
     },
@@ -52,4 +52,10 @@ RouterSchema = TypedDict(
         "reasoning": str,
         "classification": ClassificationDecision,
     },
+)
+
+# Phase 5: auto-decision when classification is notify (no HITL).
+NotifyChoiceSchema = TypedDict(
+    "NotifyChoiceSchema",
+    {"choice": Literal["respond", "ignore"]},
 )
