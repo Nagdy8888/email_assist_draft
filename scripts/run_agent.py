@@ -25,11 +25,13 @@ def main() -> None:
     config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
 
     database_url = os.getenv("DATABASE_URL")
-    # When DATABASE_URL is set, use Supabase Postgres so checkpoint data is stored in Supabase (run setup_db.py once).
+    # When DATABASE_URL is set, use Postgres checkpointer and store (Phase 6 memory).
     if database_url:
+        from email_assistant.db.store import postgres_store
         with postgres_checkpointer() as checkpointer:
-            graph = build_email_assistant_graph(checkpointer=checkpointer)
-            _run(graph, config)
+            with postgres_store() as store:
+                graph = build_email_assistant_graph(checkpointer=checkpointer, store=store)
+                _run(graph, config)
     else:
         graph = build_email_assistant_graph(checkpointer=MemorySaver())
         _run(graph, config)
@@ -59,13 +61,15 @@ def _run(graph, config: dict) -> None:
 
     while result.get("__interrupt__"):
         interrupt_payload = result["__interrupt__"]
-        print("Graph paused (notify path). The email was classified as notify (FYI).")
-        print("Interrupt:", interrupt_payload)
-        raw = input("Resume with (r)espond or (i)gnore? [r/i]: ").strip().lower()
-        if raw.startswith("r") or raw == "respond":
-            choice = "respond"
+        msg = interrupt_payload if isinstance(interrupt_payload, str) else (interrupt_payload.get("message") or interrupt_payload)
+        print("Graph paused:", msg)
+        if isinstance(interrupt_payload, dict) and "tool_calls" in interrupt_payload:
+            raw = input("Approve tool execution? (y/n) [y]: ").strip().lower()
+            choice = raw != "n" and raw != "no"
         else:
-            choice = "ignore"
+            print("(Notify path: choose respond or ignore)")
+            raw = input("Resume with (r)espond or (i)gnore? [r/i]: ").strip().lower()
+            choice = "respond" if (raw.startswith("r") or raw == "respond") else "ignore"
         result = graph.invoke(Command(resume=choice), config=config)
 
     messages = result.get("messages", [])

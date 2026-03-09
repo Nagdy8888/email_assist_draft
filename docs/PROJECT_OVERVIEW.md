@@ -8,12 +8,13 @@
 
 Tech stack: LangGraph, LangChain, OpenAI, Supabase, Postgres (checkpointer + optional store), Gmail API, optional Google Calendar.
 
-## Current state (Phase 5)
+## Current state (Phase 6/7)
 
-- **Phase 1:** All dependencies and full project structure (stubs) in place.
+- **Phase 1:** All dependencies and full project structure; **utils.py** (parse_gmail, format_gmail_markdown, format_for_display).
 - **Phase 2:** Simple agent: user message → LLM response; in-memory or Postgres checkpointer.
 - **Phase 3:** Supabase/Postgres: app tables, checkpointer, store; messages persisted when `DATABASE_URL` is set.
-- **Phase 4:** send_email_tool (new email + reply by email_id), question_tool, done_tool; Gmail OAuth; tool-call loop (chat → tools → persist).
-- **Phase 5:** **Email mode** and **triage**. Input can be `email_input` (triage path) or `user_message` (question path). **input_router** → triage_router or response_agent. **triage_router** classifies ignore / notify / respond (LLM + RouterSchema). **notify** path uses **interrupt()**; user resumes with `Command(resume="respond")` or `Command(resume="ignore")`. **respond** path runs response_agent subgraph with email context and **mark_as_read** after. Reply via `send_email_tool(..., email_id=...)`; **mark_as_read** Gmail tool and node implemented.
-- When an email is **passed in** as `email_input` (e.g. from run_agent.py, Studio, or a script that fetches Gmail), the agent sees it and runs classification and the full flow. For **automatic** ingestion of real Gmail inbox mail, run **`scripts/watch_gmail.py`**; it polls Gmail and invokes the graph for each new (unread) email.
-- See **README.md** and **docs/RUNNING_AND_TESTING.md** for setup and Gmail OAuth. **docs/PROJECT_SUMMARY.md** summarizes what has been done from the start of the project to now. For a structured 10-file guide (overview, structure, architecture, triage, database, config, prompts, running, what we did, quick reference), see **docs/guide/DOCS_INDEX.md**.
+- **Phase 4/5:** send_email_tool (new + reply), fetch_emails_tool, check_calendar_tool, schedule_meeting_tool, question_tool, done_tool; Gmail + Calendar OAuth; **email mode** and **triage** (ignore/notify/respond); **notify** HITL (interrupt → respond/ignore); **mark_as_read**.
+- **Phase 6:** **Memory**: get_memory/update_memory in **memory.py**; preferences (triage_preferences, response_preferences, cal_preferences) loaded from store and injected into triage and response prompts when graph is compiled with **store**. **Tool-approval HITL**: before send_email_tool or schedule_meeting_tool, **tool_approval_gate** calls interrupt(); resume with `Command(resume=True)` or `False`. run_agent.py uses Postgres store when `DATABASE_URL` is set.
+- **Phase 7:** **notebooks/run_agent_sdk.ipynb** runs the agent (question mode, email mode, HITL resume). **docs/GLOSSARY.md** for key terms.
+- When an email is **passed in** as `email_input` (e.g. from run_agent.py, Studio, or a script that fetches Gmail), the agent runs triage and the full flow. For **automatic** ingestion, run **`scripts/watch_gmail.py`**.
+- See **README.md** and **docs/RUNNING_AND_TESTING.md** for setup and Gmail OAuth. **docs/guide/DOCS_INDEX.md** for the 10-file guide.

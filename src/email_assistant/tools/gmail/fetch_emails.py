@@ -9,6 +9,8 @@ real emails into the agent automatically.
 import base64
 from typing import Optional
 
+from langchain_core.tools import tool
+
 from email_assistant.tools.gmail.auth import get_gmail_service
 
 
@@ -118,3 +120,23 @@ def fetch_recent_inbox(
         if email_input:
             out.append(email_input)
     return out
+
+
+def _fetch_emails_impl(max_results: int = 10, unread_only: bool = False) -> str:
+    """Fetch recent inbox and return summary text."""
+    from email_assistant.utils import format_for_display
+    try:
+        emails = fetch_recent_inbox(max_results=max_results, unread_only=unread_only)
+    except Exception as e:
+        return f"Failed to fetch emails: {e}"
+    if not emails:
+        return "No emails found."
+    return "\n".join(format_for_display(e, body_snippet_len=80) for e in emails)
+
+
+@tool
+def fetch_emails_tool(max_results: int = 10, unread_only: bool = False) -> str:
+    """
+    List recent inbox emails. Use when the user asks what emails they have or to check their inbox.
+    """
+    return _fetch_emails_impl(max_results=max_results, unread_only=unread_only)

@@ -2,12 +2,15 @@
 Entry: build and compile the top-level graph with two subagents (Email Assistant, Response).
 
 Use cases: one agent (START → input_router → email_assistant subgraph or prepare_messages → response_agent subgraph → mark_as_read).
-For LangGraph Studio the graph is exported without a checkpointer (API provides one). For CLI (run_agent.py)
-pass an explicit checkpointer (MemorySaver or Postgres) for HITL and thread persistence.
+Phase 6: optional store for memory (triage/response/cal preferences); HITL for notify and for send_email/schedule_meeting.
 """
 
+import os
+
+from langgraph.config import get_config
 from langgraph.graph import END, START, StateGraph
 
+from email_assistant.memory import get_memory
 from email_assistant.schemas import State, StateInput
 from email_assistant.nodes.input_router import input_router
 from email_assistant.nodes.triage import triage_router
@@ -15,6 +18,20 @@ from email_assistant.nodes.triage_interrupt import triage_interrupt_handler
 from email_assistant.nodes.prepare_messages import prepare_messages
 from email_assistant.nodes.mark_as_read import mark_as_read_node
 from email_assistant.simple_agent import build_response_subgraph
+
+
+def _make_triage_node(store=None):
+    """When store is set, load triage_preferences and call triage_router with triage_instructions."""
+
+    def triage_node(state: State) -> dict:
+        triage_instructions = ""
+        if store is not None:
+            config = get_config()
+            user_id = (config.get("configurable") or {}).get("user_id", os.getenv("USER_ID", "default-user"))
+            triage_instructions = get_memory(store, user_id, "triage_preferences") or ""
+        return triage_router(state, triage_instructions=triage_instructions)
+
+    return triage_node
 
 
 def _after_triage_route(state: State) -> str:
@@ -25,14 +42,14 @@ def _after_triage_route(state: State) -> str:
     return "__end__"
 
 
-def build_email_assistant_subgraph():
+def build_email_assistant_subgraph(store=None):
     """
     Build the Email Assistant subgraph: triage_router → ignore/respond → END, notify → triage_interrupt_handler → END.
 
-    No checkpointer (parent's checkpointer handles interrupt). Parent reads state after this subgraph exits and routes to prepare_messages or END.
+    When store is set, triage node loads triage_preferences from memory.
     """
     builder = StateGraph(State)
-    builder.add_node("triage_router", triage_router)
+    builder.add_node("triage_router", _make_triage_node(store))
     builder.add_node("triage_interrupt_handler", triage_interrupt_handler)
     builder.add_edge(START, "triage_router")
     builder.add_conditional_edges("triage_router", _after_triage_route, {
@@ -59,16 +76,18 @@ def _after_email_assistant_route(state: State) -> str:
     return "__end__"
 
 
-def build_email_assistant_graph(checkpointer=None):
+def build_email_assistant_graph(checkpointer=None, store=None):
     """
     Build and compile the one agent with two subagents.
 
     Flow: START → input_router → (email_input ? email_assistant subgraph : prepare_messages)
     - email_assistant subgraph → (respond ? prepare_messages : END)
     - prepare_messages → response_agent subgraph → mark_as_read → END
+
+    When store is set (Phase 6), triage and response agent use get_memory for preferences.
     """
-    email_subgraph = build_email_assistant_subgraph()
-    response_subgraph = build_response_subgraph(checkpointer=None)
+    email_subgraph = build_email_assistant_subgraph(store=store)
+    response_subgraph = build_response_subgraph(checkpointer=checkpointer, store=store)
 
     builder = StateGraph(State, input_schema=StateInput)
     builder.add_node("input_router", input_router)
@@ -92,8 +111,12 @@ def build_email_assistant_graph(checkpointer=None):
 
     # When run under LangGraph API (Studio), do not pass a checkpointer; the API provides one.
     # For CLI (run_agent.py), pass an explicit checkpointer (e.g. MemorySaver()) for HITL/threads.
+    if checkpointer is not None and store is not None:
+        return builder.compile(checkpointer=checkpointer, store=store)
     if checkpointer is not None:
         return builder.compile(checkpointer=checkpointer)
+    if store is not None:
+        return builder.compile(store=store)
     return builder.compile()
 
 

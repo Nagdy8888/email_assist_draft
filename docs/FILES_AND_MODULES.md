@@ -4,10 +4,12 @@ File-by-file guide to the codebase.
 
 ## Layout
 
-- **Phase 5 entry:** `src/email_assistant/email_assistant_hitl_memory_gmail.py` — one agent: input_router → Email Assistant subgraph or prepare_messages → Response subgraph → mark_as_read. Two subagents (compiled subgraphs as nodes).
-- **State/schemas**: `schemas.py` — State (includes user_message, question), StateInput, RouterSchema, NotifyChoiceSchema.
+- **Phase 5/6 entry:** `src/email_assistant/email_assistant_hitl_memory_gmail.py` — one agent: input_router → Email Assistant subgraph or prepare_messages → Response subgraph → mark_as_read. Optional **store** for memory (triage/response/cal preferences). Two subagents (compiled subgraphs as nodes).
+- **State/schemas**: `schemas.py` — State (includes _tool_approval for Phase 6 tool-approval HITL), StateInput, RouterSchema, NotifyChoiceSchema.
+- **Utils**: `utils.py` — parse_gmail, format_gmail_markdown, format_for_display (Gmail payload parsing and formatting for LLM/UI).
+- **Memory**: `memory.py` — get_memory(store, user_id, namespace), update_memory(store, user_id, namespace, value); store-agnostic; used by triage and response agent when graph is compiled with store.
 - **Fixtures**: `fixtures/mock_emails.py` — mock email_input payloads (notify, respond, ignore) for testing without Gmail API.
-- **Nodes**: `nodes/input_router.py`; `nodes/triage.py`; `nodes/triage_interrupt.py` (when notify, calls `interrupt()` for HITL — user chooses respond or ignore); `nodes/prepare_messages.py` — inject reply context before Response subgraph; `nodes/mark_as_read.py`. Response subgraph is built in `simple_agent.py` (build_response_subgraph).
+- **Nodes**: `nodes/input_router.py`; `nodes/triage.py` (optional triage_instructions from memory); `nodes/triage_interrupt.py` (notify HITL); `nodes/tool_approval.py` (Phase 6: interrupt before send_email/schedule_meeting); `nodes/prepare_messages.py`; `nodes/mark_as_read.py`. Response subgraph in `simple_agent.py` (chat → tool_approval_gate → tools or chat, persist_messages).
 
 ## Tree
 
@@ -16,21 +18,25 @@ File-by-file guide to the codebase.
 | ---------------------------------------------------------- | ------------------------------------------------------------------ |
 | `src/email_assistant/__init__.py`                          | Package init, version                                              |
 | `src/email_assistant/email_assistant_hitl_memory_gmail.py` | Entry: build + compile graph                                       |
-| `src/email_assistant/simple_agent.py`                      | Response subgraph: build_response_subgraph() (chat, tools, persist_messages); alias build_simple_graph |
-| `src/email_assistant/prompts.py`                           | SIMPLE_AGENT_SYSTEM_PROMPT; get_agent_system_prompt_with_tools()    |
-| `src/email_assistant/schemas.py`                           | MessagesState; State, StateInput, RouterSchema, NotifyChoiceSchema (Phase 5) |
+| `src/email_assistant/simple_agent.py`                      | Response subgraph: build_response_subgraph(checkpointer, store); _make_chat_node(store); chat → tool_approval_gate → tools or chat; persist_messages; alias build_simple_graph |
+| `src/email_assistant/prompts.py`                           | Triage, agent, notify prompts; get_agent_system_prompt_hitl_memory(); MEMORY_UPDATE_SYSTEM (Phase 6) |
+| `src/email_assistant/schemas.py`                           | MessagesState; State (_tool_approval), StateInput, RouterSchema, NotifyChoiceSchema |
+| `src/email_assistant/utils.py`                            | parse_gmail(), format_gmail_markdown(), format_for_display() |
+| `src/email_assistant/memory.py`                            | get_memory(), update_memory(); PREFERENCE_NAMESPACES; store-agnostic (Phase 6) |
 | `src/email_assistant/fixtures/mock_emails.py`              | MOCK_EMAIL_NOTIFY, MOCK_EMAIL_RESPOND, MOCK_EMAIL_IGNORE; get_mock_email(); for run_mock_email and simulation |
 | `src/email_assistant/nodes/input_router.py`                | input_router; _normalize_email_input (unwrap double-nested email_input, flat or Gmail API); normalize email_input (set _source='gmail' when from Gmail), user_message |
 | `src/email_assistant/nodes/triage.py`                      | triage_router; _is_explicit_request() override for request phrases (e.g. "send me the report"); LLM + RouterSchema |
 | `src/email_assistant/nodes/triage_interrupt.py`            | triage_interrupt_handler; when notify, calls interrupt() — graph pauses until user resumes with Command(resume="respond") or Command(resume="ignore") |
 | `src/email_assistant/nodes/prepare_messages.py`            | prepare_messages; inject reply context when email_id/email_input set |
 | `src/email_assistant/nodes/mark_as_read.py`                 | mark_as_read_node; Gmail mark_as_read when email_id                    |
+| `src/email_assistant/nodes/tool_approval.py`               | tool_approval_gate; interrupt before send_email_tool/schedule_meeting_tool; resume True/False (Phase 6) |
 | `src/email_assistant/tools/gmail/send_email.py`            | send_new_email, send_reply_email, send_email_tool (email_id for reply) |
 | `src/email_assistant/tools/gmail/mark_as_read.py`          | mark_as_read(email_id)                                                 |
-| `src/email_assistant/tools/__init__.py`                    | get_tools() → send_email_tool, question_tool, done_tool                 |
+| `src/email_assistant/tools/gmail/calendar.py`              | check_calendar_tool, schedule_meeting_tool; list_events, create_event (Google Calendar API) |
+| `src/email_assistant/tools/__init__.py`                    | get_tools(include_gmail, include_calendar) → send_email_tool, fetch_emails_tool, check_calendar_tool, schedule_meeting_tool, question_tool, done_tool |
 | `src/email_assistant/tools/common.py`                      | question_tool, done_tool                                                |
 | `src/email_assistant/tools/gmail/auth.py`                  | get_credentials(), get_gmail_service(); OAuth                            |
-| `src/email_assistant/tools/gmail/fetch_emails.py`         | list_inbox_message_ids(); get_message_as_email_input(); fetch_recent_inbox(); used by watch_gmail |
+| `src/email_assistant/tools/gmail/fetch_emails.py`         | list_inbox_message_ids(); get_message_as_email_input(); fetch_recent_inbox(); fetch_emails_tool (@tool) for agent |
 | `src/email_assistant/tools/gmail/prompt_templates.py`      | get_gmail_tools_prompt(), GMAIL_TOOLS_PROMPT                        |
 | `src/email_assistant/db/store.py`                          | PostgresStore; setup_store()                                       |
 | `src/email_assistant/db/checkpointer.py`                   | postgres_checkpointer() (search_path=email_assistant); run_checkpoint_created_at_migration() |
@@ -73,6 +79,8 @@ File-by-file guide to the codebase.
 | `docs/code-explanations/config.md`                      | Config: .env.example, langgraph.json (graphs, checkpointer, env) |
 | `docs/code-explanations/migrations.md`                  | migrations/: 000 drop schema, 001 app tables, 002 checkpoint created_at |
 | `migrations/`                                              | DB schema (SQL in Phase 3)                                         |
+| `notebooks/run_agent_sdk.ipynb`                            | Run agent via SDK: question mode, email mode, HITL resume (Phase 7) |
+| `docs/GLOSSARY.md`                                         | Key terms: triage, notify, respond, HITL, thread_id, store, memory, etc. |
 | `notebooks/`                                               | Notebook (Phase 7)                                                 |
 | `tests/`                                                   | Tests                                                              |
 

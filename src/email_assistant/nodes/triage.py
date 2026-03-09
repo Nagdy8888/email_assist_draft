@@ -5,6 +5,7 @@ Use cases: single LLM call with structured output; uses triage prompts and memor
 """
 
 import os
+from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -13,11 +14,12 @@ from email_assistant.prompts import get_triage_system_prompt, get_triage_user_pr
 from email_assistant.schemas import RouterSchema, State
 
 
-def triage_router(state: State) -> dict:
+def triage_router(state: State, *, triage_instructions: Optional[str] = None) -> dict:
     """
     Run triage LLM with structured output (RouterSchema). Return classification_decision and optionally reasoning.
 
     Use cases: after input_router when email_input is present; output drives conditional edges (ignore/notify/respond).
+    triage_instructions: optional preference text from memory (Phase 6); injected by caller when store is used.
     """
     email_input = state.get("email_input")
     if not email_input:
@@ -32,7 +34,7 @@ def triage_router(state: State) -> dict:
     if _is_explicit_request(str(subject), body):
         return {"classification_decision": "respond"}
 
-    system = get_triage_system_prompt()
+    system = get_triage_system_prompt(background="", triage_instructions=triage_instructions or "")
     user = get_triage_user_prompt(from_addr, to_addr, subject, body, from_gmail_inbox=from_gmail_inbox)
     llm = ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", "gpt-4o"),

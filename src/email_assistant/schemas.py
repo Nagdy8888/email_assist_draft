@@ -28,6 +28,7 @@ State = TypedDict(
         "classification_decision": Optional[ClassificationDecision],
         "email_id": Optional[str],
         "_notify_choice": Optional[str],  # "respond" | "ignore" after triage_interrupt (user resumes with Command(resume=...))
+        "_tool_approval": Optional[bool],  # True = run tools (send_email/schedule_meeting approved); False = declined
         "user_message": Optional[str],
         "question": Optional[str],
     },

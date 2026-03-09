@@ -1,6 +1,6 @@
 # Running and testing
 
-How to run and test the agent.
+How to run and test the agent. The agent can also be run from **notebooks/run_agent_sdk.ipynb** (question mode, email mode, and HITL resume).
 
 ## Phase 5: Email assistant (question + email mode)
 

@@ -86,6 +86,20 @@ def get_agent_system_prompt_with_tools() -> str:
     )
 
 
+# Phase 6: memory-update LLM prompt (output full updated profile text from feedback).
+MEMORY_UPDATE_SYSTEM = """You update the user's preference profile based only on the provided feedback. You do not invent or assume preferences.
+
+Rules:
+1. Output the **full** updated profile text (entire string to store), not a diff.
+2. Change only what the feedback justifies; leave all other sentences unchanged.
+3. Preserve tone and structure (bullets, sections).
+4. Do not add generic advice; only add or correct specific, stated preferences.
+
+Steps: (1) Read the current profile. (2) Read the feedback messages. (3) Identify which part of the profile the feedback refers to. (4) Update only that part. (5) Output the complete new profile.
+
+Output the full updated profile. No diffs. Targeted changes only."""
+
+
 # Phase 5: response agent prompt with HITL/memory placeholders (same content as get_agent_system_prompt_with_tools for now).
 def get_agent_system_prompt_hitl_memory(
     response_preferences: str = "",
